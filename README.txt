@@ -1,5 +1,12 @@
 This is a bot that will continuously check an email account for a new email whose title or content contains specific key words. Upon locating the email, the program will play some notification sound for a specified length before it exits.
 
+BEFORE YOU START, NOTE:
+This does not work with an email that uses MFA (like UCLA Mail).
+This can be bypassed by setting the email account up in such a way that all incoming email are automatically forwarded to another account that you have access to without providing MFA.
+The email account you wish to access has to allow less secure app access. You can do that by checking the ON option here:
+https://myaccount.google.com/lesssecureapps?pli=1
+The email account also needs to enable IMAP access. Do that by going to Gmail Settings -> Forwarding and POP/IMAP -> IMAP Access and click "Enable IMAP". Make sure to click Save Changes.
+
 HOW TO USE:
 The credentials.json contains a Javascript object that contains two attributes: "username" and "password". Simply input the email account's username and password in the respective fields.
 Since this script will check for the email continously, it is designed with the idea that it will be running in the background using nohup.
