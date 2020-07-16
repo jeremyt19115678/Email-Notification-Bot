@@ -3,26 +3,32 @@ import imaplib
 import sys, json, os
 import time
 import email
+import pygame.mixer as mixer
 
 #load login credentials from credentials.json
 def load_credentials():
-    filepath = os.path.join(os.getcwd(), './credentials.json')
+    filepath = os.path.join(os.getcwd(), './config.json')
     sys.stdout.write("Looking for login credentials at " + filepath + "......")
     try:
         with open(filepath) as f:
             data = json.load(f)
-            if 'username' in data.keys() and 'password' in data.keys():
-                username = data['username'].encode('ascii', 'replace')
-                password = data['password'].encode('ascii', 'replace')
+            if 'credentials' in data.keys():
+                credentials = data['credentials']
             else:
-                raise Exception("Cannot find object with attribute 'username' and/or 'password' in JSON. Check credentials.json.")
-            sys.stdout.write(' success.\n')
+                raise Exception("Cannot find an object named 'credentials' in config.json.")
+            if 'username' in credentials.keys() and 'password' in credentials.keys():
+                username = credentials['username'].encode('ascii', 'replace')
+                password = credentials['password'].encode('ascii', 'replace')
+                sys.stdout.write(' success.\n')
+                return (username, password)
+            else:
+                raise Exception("'credentials' object doesn't have attribute 'username' and/or 'password'. Check config.json.")
     except Exception as e:
         sys.stdout.write(' failed.\n'+ str(e)+'\n')
         sys.stdout.write('Script execution aborted.\n')
         exit()
-    return (username, password)
 
+#open imap connection 
 def open_connection(username, password):
     try:
         sys.stdout.write('Logging into ' + username + '......')
@@ -34,6 +40,7 @@ def open_connection(username, password):
     sys.stdout.write(' success.\nConnection established.\n')
     return connection
 
+#retrieve the body of the latest mail
 def get_latest_mail_body(connection):
     try:
         sys.stdout.write('Looking into inbox......')
@@ -69,26 +76,119 @@ def get_latest_mail_body(connection):
                         search_pool_src += 1
                         search_pool += messages[0].get_payload(decode=True)
                     messages.pop(0) #because we processed the first message in the messages list
-                return search_pool_src, search_pool
+                sys.stdout.write('The text we will search through came from ' + str(search_pool_src) + ' messages.\n')
+                sys.stdout.write('These texts are enclosed by the equal signs:\n=====================\n')
+                sys.stdout.write(search_pool + '\n=====================\n')
+                return search_pool
+        raise Exception('The fetched result probably does not have a tuple in it.')
     except Exception as e:
         sys.stdout.write(' failed.\n' + str(e) + '\n')
-        return None, None
+        return None
 
 #play some sound at top volume nonstop
-def alert():
-    pass
+def alert(iterations):
+    mixer.music.load('notif.mp3')
+    mixer.music.set_volume(1)
+    mixer.music.play(loops=iterations)
+
+def load_search_phrases():
+    filepath = os.path.join(os.getcwd(), './config.json')
+    sys.stdout.write("Looking for search phrases at " + filepath + "......")
+    try:
+        with open(filepath) as f:
+            data = json.load(f)
+            if 'search_phrases' in data.keys():
+                search_phrases = data['search_phrases']
+            else:
+                raise Exception("Cannot find attribute 'search_phrases' in config.json.")
+            if not isinstance(search_phrases, list):
+                raise Exception("Attribute 'search_phrases' in the config.json is not a list.")
+            elif len(search_phrases) == 0:
+                raise Exception("Attribute 'search_phrases' cannot be empty. Enter a phrase to search for.")
+            else:
+                sys.stdout.write(' success.\n')
+                return [phrase.encode('ascii', 'replace') for phrase in search_phrases]
+    except Exception as e:
+        sys.stdout.write(' failed.\n'+ str(e)+'\n')
+        sys.stdout.write('Script execution aborted.\n')
+        exit()
+
+def load_alert_iterations():
+    filepath = os.path.join(os.getcwd(), './config.json')
+    sys.stdout.write("Looking for alert iterations at " + filepath + "......")
+    try:
+        with open(filepath) as f:
+            data = json.load(f)
+            if 'alert_iterations' in data.keys():
+                alert_iterations = data['alert_iterations']
+            else:
+                raise Exception("Cannot find attribute 'alert_iterations' in config.json.")
+            if not isinstance(alert_iterations, int):
+                raise Exception("Attribute 'alert_iterations' in config.json is not an integer.")
+            elif alert_iterations < -1:
+                raise Exception("Attribute 'alert_iterations' has to be greater than -1.\nNote that setting alert_iterations to 1 plays the alert indefinitely.")
+            else:
+                sys.stdout.write(' success.\n')
+                return alert_iterations
+    except Exception as e:
+        sys.stdout.write(' failed.\n'+ str(e)+'\n')
+        sys.stdout.write('Script execution aborted.\n')
+        exit()
+
+def load_search_cycle():
+    filepath = os.path.join(os.getcwd(), './config.json')
+    sys.stdout.write("Looking for search cycle at " + filepath + "......")
+    try:
+        with open(filepath) as f:
+            data = json.load(f)
+            if 'search_cycle' in data.keys():
+                search_cycle = data['search_cycle']
+            else:
+                raise Exception("Cannot find attribute 'search_cycle' in config.json.")
+            if not isinstance(search_cycle, int):
+                raise Exception("Attribute 'search_cycle' in config.json is not an integer.")
+            elif search_cycle < 0:
+                raise Exception("Attribute 'search_cycle' has to be greater than 0.")
+            else:
+                sys.stdout.write(' success.\n')
+                return search_cycle
+    except Exception as e:
+        sys.stdout.write(' failed.\n'+ str(e)+'\n')
+        sys.stdout.write('Script execution aborted.\n')
+        exit()
 
 def main():
+    mixer.init() #initialize the mixer
     #log entry prefix
     now = datetime.now()
     sys.stdout.write("\nNEW RUN STARTING ON " + str(now) + '\n')
+    #load things from config.json
     username, password = load_credentials()
+    search_phrases = load_search_phrases()
+    alert_iterations = load_alert_iterations()
+    search_cycle = load_search_cycle()
+    #establish connection with server using loaded credentials
     connection = open_connection(username, password)
-    count, search_pool = get_latest_mail_body(connection)
-    print(count)
-    print(search_pool)
+    while True:
+        #retrieve latest email's body
+        search_pool = get_latest_mail_body(connection)
+        located_phrases = ""
+        for phrase in search_phrases:
+            if phrase in search_pool.lower():
+                located_phrases += phrase + ', '
+        if len(located_phrases) > 0: #phrases are found
+            located_phrases = located_phrases[:-2] #trim the ', '
+            sys.stdout.write('Search phrase(s) ' + located_phrases + ' are found in the email body.\n')
+            alert(alert_iterations)
+            sys.stdout.write('Ringing alarm for ' + str(alert_iterations) + ' iterations.\n')
+            while True:
+                if not mixer.music.get_busy(): #if the music stops
+                    sys.stdout.write('Alarm shut down.\nTask completed. Goodbye.\n')
+                    exit()
+        sys.stdout.write('No search phrases found.\n')
+        sys.stdout.write('Sleeping for ' + str(search_cycle) + ' seconds before next search.\n')
+        time.sleep(60)
 
-    #print(connection.list(pattern='*INBOX*'))
 
     #while True:
         #sys.stdout.flush()
