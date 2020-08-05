@@ -1,0 +1,11 @@
+{
+    "credentials": {
+        "username": "yourEmailAddress@gmail.com",
+        "password": "yourPasswordGoesHere"
+    },
+    "alert_iterations": -1,
+    "search_phrases": [
+        "some", "phrase", "of", "interest"
+    ],
+    "search_cycle": 60
+}
