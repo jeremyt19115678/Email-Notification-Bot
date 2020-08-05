@@ -10,6 +10,7 @@ https://myaccount.google.com/lesssecureapps?pli=1
 The email account also needs to enable IMAP access. Do that by going to Gmail Settings -> Forwarding and POP/IMAP -> IMAP Access and click "Enable IMAP". Make sure to click Save Changes.
 
 HOW TO USE:
+Other than email-notif-bot.py in the directory, you also need config.json, and notif.mp3.
 The config.json contains a Javascript object attribute called "credentials" that contains two attributes: "username" and "password". Simply input the email account's username and password in the respective fields.
 The json also contains other attributes named "alert_iterations", which is the number of times that notif.mp3 will be played. If you want it to loop indefinitely, input -1 for this attribute.
 The "search_phrases" attribute is a list of all words that we will be searching for in the email body.
