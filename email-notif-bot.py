@@ -45,7 +45,7 @@ def get_latest_mail_body(connection):
     try:
         sys.stdout.write('Looking into inbox......')
         connection.select('INBOX', readonly=True)
-        typ, ids = connection.search(None, '(FROM "Jeremy")') #second parametr specifies the search criterion
+        typ, ids = connection.search(None, 'ALL') #second parametr specifies the search criterion
         email_ids = ids[0].split()
         if len(email_ids) > 0:
             sys.stdout.write('\nEmail(s) with ID ')
@@ -171,20 +171,21 @@ def main():
     connection = open_connection(username, password)
     while True:
         #retrieve latest email's body
-        search_pool = get_latest_mail_body(connection)
-        located_phrases = ""
-        for phrase in search_phrases:
-            if phrase in search_pool.lower():
-                located_phrases += phrase + ', '
-        if len(located_phrases) > 0: #phrases are found
-            located_phrases = located_phrases[:-2] #trim the ', '
-            sys.stdout.write('Search phrase(s) ' + located_phrases + ' are found in the email body.\n')
-            alert(alert_iterations)
-            sys.stdout.write('Ringing alarm for ' + str(alert_iterations) + ' iterations.\n')
-            while True:
-                if not mixer.music.get_busy(): #if the music stops
-                    sys.stdout.write('Alarm shut down.\nTask completed. Goodbye.\n')
-                    exit()
+        search_pool = get_latest_mail_body(connection).lower()
+        if isinstance(search_pool, str):
+            located_phrases = ""
+            for phrase in search_phrases:
+                if phrase.lower() in search_pool:
+                    located_phrases += phrase + ', '
+            if len(located_phrases) > 0: #phrases are found
+                located_phrases = located_phrases[:-2] #trim the ', '
+                sys.stdout.write('Search phrase(s) ' + located_phrases + ' are found in the email body.\n')
+                alert(alert_iterations)
+                sys.stdout.write('Ringing alarm for ' + str(alert_iterations) + ' iterations.\n')
+                while True:
+                    if not mixer.music.get_busy(): #if the music stops
+                        sys.stdout.write('Alarm shut down.\nTask completed. Goodbye.\n')
+                        exit()
         sys.stdout.write('No search phrases found.\n')
         sys.stdout.write('Sleeping for ' + str(search_cycle) + ' seconds before next search.\n')
         time.sleep(60)
